@@ -1,0 +1,2 @@
+Target dependency graph (1 target)
+Target 'fc-sdk-test-for-ios' in project 'fc-sdk-test-for-ios' (no dependencies)

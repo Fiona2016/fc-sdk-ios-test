@@ -1,0 +1,65 @@
+{
+  "buildCommand" : {
+    "command" : "build",
+    "skipDependencies" : false,
+    "style" : "buildOnly"
+  },
+  "configuredTargets" : [
+    {
+      "guid" : "b7712f9f62c86df899783c644dd74cabf492a9f9aedbd64245a28c3b177d1e9a"
+    }
+  ],
+  "containerPath" : "/Users/fiona/iOSProjects/fc-sdk-test-for-ios/fc-sdk-test-for-ios.xcodeproj",
+  "continueBuildingAfterErrors" : false,
+  "dependencyScope" : "workspace",
+  "enableIndexBuildArena" : false,
+  "hideShellScriptEnvironment" : false,
+  "parameters" : {
+    "action" : "build",
+    "activeArchitecture" : "undefined_arch",
+    "activeRunDestination" : {
+      "disableOnlyActiveArch" : true,
+      "platform" : "iphonesimulator",
+      "sdk" : "iphonesimulator18.5",
+      "sdkVariant" : "iphonesimulator",
+      "supportedArchitectures" : [
+        "i386",
+        "x86_64"
+      ],
+      "targetArchitecture" : "undefined_arch"
+    },
+    "arenaInfo" : {
+      "buildIntermediatesPath" : "/Users/fiona/iOSProjects/fc-sdk-test-for-ios/.derivedData/Build/Intermediates.noindex",
+      "buildProductsPath" : "/Users/fiona/iOSProjects/fc-sdk-test-for-ios/.derivedData/Build/Products",
+      "derivedDataPath" : "/Users/fiona/iOSProjects/fc-sdk-test-for-ios/.derivedData",
+      "indexDataStoreFolderPath" : "/Users/fiona/iOSProjects/fc-sdk-test-for-ios/.derivedData/Index.noindex/DataStore",
+      "indexEnableDataStore" : true,
+      "indexPCHPath" : "/Users/fiona/iOSProjects/fc-sdk-test-for-ios/.derivedData/Index.noindex/PrecompiledHeaders",
+      "pchPath" : "/Users/fiona/iOSProjects/fc-sdk-test-for-ios/.derivedData/Build/Intermediates.noindex/PrecompiledHeaders"
+    },
+    "configurationName" : "Debug",
+    "overrides" : {
+      "commandLine" : {
+        "table" : {
+          "SDKROOT" : "iphonesimulator18.5"
+        }
+      },
+      "synthesized" : {
+        "table" : {
+          "ACTION" : "build",
+          "CLANG_COVERAGE_MAPPING" : "YES",
+          "CLANG_PROFILE_DATA_DIRECTORY" : "/Users/fiona/iOSProjects/fc-sdk-test-for-ios/.derivedData/Build/ProfileData",
+          "ENABLE_PREVIEWS" : "NO",
+          "ENABLE_XOJIT_PREVIEWS" : "YES",
+          "ONLY_ACTIVE_ARCH" : "YES"
+        }
+      }
+    }
+  },
+  "schemeCommand" : "launch",
+  "showNonLoggedProgress" : true,
+  "useDryRun" : false,
+  "useImplicitDependencies" : true,
+  "useLegacyBuildLocations" : false,
+  "useParallelTargets" : true
+}

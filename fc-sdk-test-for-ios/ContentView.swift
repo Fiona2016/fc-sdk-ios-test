@@ -8,6 +8,7 @@
 import SwiftUI
 import FlashcatRUM
 import WebKit
+import UIKit
 
 struct ContentView: View {
     var body: some View {
@@ -17,6 +18,11 @@ struct ContentView: View {
                     Label("HackerNews", systemImage: "newspaper")
                 }
             
+            StaticAssetsTabView()
+                .tabItem {
+                    Label("静态资源", systemImage: "photo.on.rectangle")
+                }
+
             RUMTestTabView()
                 .tabItem {
                     Label("RUM测试", systemImage: "testtube.2")
@@ -66,6 +72,14 @@ class HackerNewsViewModel: ObservableObject {
     @Published var stories: [HackerNewsItem] = []
     @Published var isLoading: Bool = false
     @Published var errorMessage: String?
+
+    private lazy var session: URLSession = {
+        URLSession(
+            configuration: .ephemeral,
+            delegate: InstrumentedURLSessionDelegate.shared,
+            delegateQueue: nil
+        )
+    }()
     
     func loadTopStories() {
         isLoading = true
@@ -78,7 +92,11 @@ class HackerNewsViewModel: ObservableObject {
             return
         }
         
-        URLSession.shared.dataTask(with: url) { [weak self] data, response, error in
+        let task = session.dataTask(with: url) { [weak self] data, response, error in
+            if let httpResponse = response as? HTTPURLResponse {
+                print("✅ HN topstories request completed: HTTP \(httpResponse.statusCode)")
+            }
+            
             if let error = error {
                 DispatchQueue.main.async {
                     self?.errorMessage = "Network error: \(error.localizedDescription)"
@@ -97,6 +115,7 @@ class HackerNewsViewModel: ObservableObject {
             
             do {
                 let storyIds = try JSONDecoder().decode([Int].self, from: data)
+                print("✅ HN loaded \(storyIds.count) story IDs, will fetch first 30")
                 // Fetch first 30 stories
                 self?.loadStories(ids: Array(storyIds.prefix(30)))
             } catch {
@@ -105,7 +124,9 @@ class HackerNewsViewModel: ObservableObject {
                     self?.isLoading = false
                 }
             }
-        }.resume()
+        }
+        print("📡 Starting HN topstories request to: \(url)")
+        task.resume()
     }
     
     private func loadStories(ids: [Int]) {
@@ -119,7 +140,7 @@ class HackerNewsViewModel: ObservableObject {
                 continue
             }
             
-            URLSession.shared.dataTask(with: url) { data, response, error in
+            session.dataTask(with: url) { data, response, error in
                 defer { group.leave() }
                 
                 guard let data = data,
@@ -134,6 +155,7 @@ class HackerNewsViewModel: ObservableObject {
         group.notify(queue: .main) { [weak self] in
             self?.stories = loadedStories.sorted { ($0.score ?? 0) > ($1.score ?? 0) }
             self?.isLoading = false
+            print("✅ HackerNews loaded stories count: \(loadedStories.count)")
         }
     }
 }
@@ -154,6 +176,11 @@ private struct HackerNewsTabView: View {
                         Text(errorMessage)
                             .foregroundStyle(.secondary)
                         Button("Retry") {
+                            RUMMonitor.shared().addAction(
+                                type: .tap,
+                                name: "Retry Loading HN Stories",
+                                attributes: [:]
+                            )
                             viewModel.loadTopStories()
                         }
                         .buttonStyle(.borderedProminent)
@@ -164,6 +191,11 @@ private struct HackerNewsTabView: View {
                         Text("No stories loaded")
                             .foregroundStyle(.secondary)
                         Button("Load Stories") {
+                            RUMMonitor.shared().addAction(
+                                type: .tap,
+                                name: "Load HN Stories",
+                                attributes: [:]
+                            )
                             viewModel.loadTopStories()
                         }
                         .buttonStyle(.borderedProminent)
@@ -290,7 +322,11 @@ private struct HackerNewsDetailView: View {
             return
         }
         
-        URLSession.shared.dataTask(with: url) { data, response, error in
+        URLSession(
+            configuration: .ephemeral,
+            delegate: InstrumentedURLSessionDelegate.shared,
+            delegateQueue: nil
+        ).dataTask(with: url) { data, response, error in
             DispatchQueue.main.async {
                 if let error = error {
                     errorMessage = error.localizedDescription
@@ -328,6 +364,96 @@ private struct HackerNewsDetailView: View {
     }
 }
 
+// MARK: - Static Assets Tab
+
+private struct StaticIllustration: Identifiable {
+    let id = UUID()
+    let assetName: String
+    let title: String
+}
+
+private struct StaticAssetsTabView: View {
+    private let illustrations: [StaticIllustration] = [
+        .init(assetName: "pixabay_illustration_1", title: "Pixabay Illustration #1"),
+        .init(assetName: "pixabay_illustration_2", title: "Pixabay Illustration #2"),
+        .init(assetName: "pixabay_illustration_3", title: "Pixabay Illustration #3")
+    ]
+
+    var body: some View {
+        NavigationStack {
+            List(illustrations) { item in
+                StaticIllustrationRow(item: item)
+            }
+            .navigationTitle("静态资源")
+        }
+        // NOTE: Removed .trackRUMView - using automatic SwiftUI view tracking instead
+    }
+}
+
+private struct StaticIllustrationRow: View {
+    let item: StaticIllustration
+    @State private var didTrack = false
+
+    var body: some View {
+        HStack(spacing: 12) {
+            Image(item.assetName)
+                .resizable()
+                .scaledToFill()
+                .frame(width: 56, height: 56)
+                .clipShape(RoundedRectangle(cornerRadius: 12))
+
+            VStack(alignment: .leading, spacing: 4) {
+                Text(item.title)
+                    .font(.headline)
+                Text(item.assetName)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+            Spacer()
+        }
+        .padding(.vertical, 4)
+        .onAppear {
+            guard !didTrack else { return }
+            didTrack = true
+            StaticAssetRUMTracker.trackBundledImageLoad(assetName: item.assetName)
+        }
+    }
+}
+
+private enum StaticAssetRUMTracker {
+    static func trackBundledImageLoad(assetName: String) {
+        let monitor = RUMMonitor.shared()
+        let resourceKey = "bundle-image:\(assetName):\(UUID().uuidString)"
+        let urlString = "bundle://Assets.xcassets/\(assetName)"
+
+        monitor.startResource(
+            resourceKey: resourceKey,
+            httpMethod: .get,
+            urlString: urlString,
+            attributes: [
+                "resource.origin": "bundle",
+                "asset.name": assetName
+            ]
+        )
+
+        let start = CFAbsoluteTimeGetCurrent()
+        let image = UIImage(named: assetName)
+        let durationMs = Int((CFAbsoluteTimeGetCurrent() - start) * 1000)
+
+        monitor.stopResource(
+            resourceKey: resourceKey,
+            statusCode: image == nil ? 404 : 200,
+            kind: .image,
+            size: nil,
+            attributes: [
+                "duration_ms": durationMs
+            ]
+        )
+
+        print("✅ Tracked bundled image as RUM resource: \(assetName), duration_ms=\(durationMs), status=\(image == nil ? 404 : 200)")
+    }
+}
+
 // MARK: - RUM Test Tab
 
 private struct RUMTestTabView: View {
@@ -340,6 +466,9 @@ private struct RUMTestTabView: View {
                     Text("RUM 测试")
                         .font(.largeTitle)
                         .bold()
+                    
+                    // Important notice about crash reporting
+                    crashReportingNotice
                     
                     Text("错误和崩溃测试")
                         .font(.headline)
@@ -358,6 +487,31 @@ private struct RUMTestTabView: View {
         }
     }
     
+    private var crashReportingNotice: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            HStack {
+                Image(systemName: "info.circle.fill")
+                    .foregroundStyle(.blue)
+                Text("崩溃上报说明")
+                    .font(.headline)
+            }
+            
+            VStack(alignment: .leading, spacing: 4) {
+                Text("• 崩溃报告会在下次启动时上报")
+                Text("• 通过 Xcode 调试时，调试器会拦截崩溃")
+                Text("• 建议：停止调试后，从设备直接启动应用")
+                Text("• 触发崩溃后，重新启动查看上报结果")
+            }
+            .font(.caption)
+            .foregroundStyle(.secondary)
+        }
+        .padding()
+        .background(
+            RoundedRectangle(cornerRadius: 12)
+                .fill(Color.blue.opacity(0.1))
+        )
+    }
+    
     private var testSection: some View {
         VStack(spacing: 16) {
             testButton(
@@ -371,7 +525,7 @@ private struct RUMTestTabView: View {
             
             testButton(
                 title: "触发崩溃",
-                subtitle: "强制崩溃应用（Fatal Error）",
+                subtitle: "崩溃后重启应用以上报（需要非调试模式）",
                 icon: "xmark.octagon.fill",
                 color: .red
             ) {
@@ -381,7 +535,14 @@ private struct RUMTestTabView: View {
     }
     
     private func testButton(title: String, subtitle: String, icon: String, color: Color, action: @escaping () -> Void) -> some View {
-        Button(action: action) {
+        Button(action: {
+            RUMMonitor.shared().addAction(
+                type: .tap,
+                name: title,
+                attributes: [:]
+            )
+            action()
+        }) {
             HStack {
                 Image(systemName: icon)
                     .foregroundStyle(color)
@@ -461,9 +622,17 @@ private struct RUMTestTabView: View {
     
     // Trigger a crash
     private func triggerCrash() {
-        lastActionResult = "⚠️ 应用将在1秒后崩溃..."
+        lastActionResult = """
+        ⚠️ 应用将在2秒后崩溃...
         
-        DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) {
+        崩溃后请：
+        1. 停止 Xcode 调试（如果在调试）
+        2. 从设备/模拟器直接启动应用
+        3. 崩溃报告会在启动时自动上报
+        4. 查看控制台日志确认上报状态
+        """
+        
+        DispatchQueue.main.asyncAfter(deadline: .now() + 2.0) {
             forceCrash()
         }
     }
@@ -494,6 +663,7 @@ private struct WebViewTabView: View {
                     .padding()
             }
         }
+        // NOTE: Removed .trackRUMView - using automatic SwiftUI view tracking instead
     }
 }
 
