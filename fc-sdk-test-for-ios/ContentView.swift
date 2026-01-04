@@ -8,6 +8,7 @@
 import SwiftUI
 import FlashcatRUM
 import WebKit
+import FlashcatWebViewTracking
 import UIKit
 
 struct ContentView: View {
@@ -370,13 +371,17 @@ private struct StaticIllustration: Identifiable {
     let id = UUID()
     let assetName: String
     let title: String
+    let shouldFail: Bool // Track if this resource should fail
 }
 
 private struct StaticAssetsTabView: View {
     private let illustrations: [StaticIllustration] = [
-        .init(assetName: "pixabay_illustration_1", title: "Pixabay Illustration #1"),
-        .init(assetName: "pixabay_illustration_2", title: "Pixabay Illustration #2"),
-        .init(assetName: "pixabay_illustration_3", title: "Pixabay Illustration #3")
+        .init(assetName: "pixabay_illustration_1", title: "Pixabay Illustration #1", shouldFail: false),
+        .init(assetName: "pixabay_illustration_2", title: "Pixabay Illustration #2", shouldFail: false),
+        .init(assetName: "pixabay_illustration_3", title: "Pixabay Illustration #3", shouldFail: false),
+        .init(assetName: "non_existent_image_1", title: "不存在的图片 #1 (404)", shouldFail: true),
+        .init(assetName: "missing_asset_2", title: "缺失的资源 #2 (404)", shouldFail: true),
+        .init(assetName: "deleted_image_3", title: "已删除的图片 #3 (404)", shouldFail: true)
     ]
 
     var body: some View {
@@ -396,20 +401,39 @@ private struct StaticIllustrationRow: View {
 
     var body: some View {
         HStack(spacing: 12) {
-            Image(item.assetName)
-                .resizable()
-                .scaledToFill()
-                .frame(width: 56, height: 56)
-                .clipShape(RoundedRectangle(cornerRadius: 12))
+            // Display placeholder for missing images
+            if item.shouldFail {
+                ZStack {
+                    RoundedRectangle(cornerRadius: 12)
+                        .fill(Color.red.opacity(0.1))
+                        .frame(width: 56, height: 56)
+                    Image(systemName: "xmark.circle.fill")
+                        .foregroundStyle(.red)
+                        .font(.title2)
+                }
+            } else {
+                Image(item.assetName)
+                    .resizable()
+                    .scaledToFill()
+                    .frame(width: 56, height: 56)
+                    .clipShape(RoundedRectangle(cornerRadius: 12))
+            }
 
             VStack(alignment: .leading, spacing: 4) {
                 Text(item.title)
                     .font(.headline)
+                    .foregroundStyle(item.shouldFail ? .red : .primary)
                 Text(item.assetName)
                     .font(.caption)
                     .foregroundStyle(.secondary)
             }
             Spacer()
+            
+            if item.shouldFail {
+                Image(systemName: "exclamationmark.triangle.fill")
+                    .foregroundStyle(.orange)
+                    .font(.caption)
+            }
         }
         .padding(.vertical, 4)
         .onAppear {
@@ -459,6 +483,15 @@ private enum StaticAssetRUMTracker {
 private struct RUMTestTabView: View {
     @State private var lastActionResult: String = ""
     
+    // Use static session to avoid lazy var mutation issues in struct
+    private static let testSession: URLSession = {
+        URLSession(
+            configuration: .ephemeral,
+            delegate: InstrumentedURLSessionDelegate.shared,
+            delegateQueue: nil
+        )
+    }()
+    
     var body: some View {
         NavigationStack {
             ScrollView {
@@ -475,6 +508,20 @@ private struct RUMTestTabView: View {
                         .foregroundStyle(.secondary)
                     
                     testSection
+                    
+                    Text("Trace 功能测试")
+                        .font(.headline)
+                        .foregroundStyle(.secondary)
+                        .padding(.top, 8)
+                    
+                    traceTestSection
+                    
+                    Text("网络请求失败测试")
+                        .font(.headline)
+                        .foregroundStyle(.secondary)
+                        .padding(.top, 8)
+                    
+                    networkFailureSection
                     
                     if !lastActionResult.isEmpty {
                         resultCard
@@ -530,6 +577,77 @@ private struct RUMTestTabView: View {
                 color: .red
             ) {
                 triggerCrash()
+            }
+        }
+    }
+    
+    private var traceTestSection: some View {
+        VStack(spacing: 16) {
+            testButton(
+                title: "测试 localhost:3000",
+                subtitle: "发送带 trace headers 的请求",
+                icon: "antenna.radiowaves.left.and.right",
+                color: .blue
+            ) {
+                testLocalhost3000()
+            }
+            
+            testButton(
+                title: "测试 HackerNews API",
+                subtitle: "验证 trace headers 添加",
+                icon: "link.circle.fill",
+                color: .green
+            ) {
+                testHackerNewsTrace()
+            }
+        }
+    }
+    
+    private var networkFailureSection: some View {
+        VStack(spacing: 16) {
+            testButton(
+                title: "404 错误",
+                subtitle: "请求不存在的资源",
+                icon: "doc.questionmark.fill",
+                color: .orange
+            ) {
+                testNotFoundError()
+            }
+            
+            testButton(
+                title: "无效域名",
+                subtitle: "请求无法解析的域名",
+                icon: "network.slash",
+                color: .red
+            ) {
+                testInvalidDomain()
+            }
+            
+            testButton(
+                title: "连接超时",
+                subtitle: "请求无响应的服务器",
+                icon: "clock.badge.exclamationmark.fill",
+                color: .purple
+            ) {
+                testConnectionTimeout()
+            }
+            
+            testButton(
+                title: "错误的 URL",
+                subtitle: "使用格式错误的 URL",
+                icon: "link.badge.xmark",
+                color: .pink
+            ) {
+                testMalformedURL()
+            }
+            
+            testButton(
+                title: "服务器错误 (500)",
+                subtitle: "请求会返回服务器错误的接口",
+                icon: "server.rack",
+                color: .red
+            ) {
+                testServerError()
             }
         }
     }
@@ -642,6 +760,262 @@ private struct RUMTestTabView: View {
         let array: [Int]? = nil
         let _ = array![0] // This will crash with fatal error
     }
+    
+    // MARK: - Network Failure Tests
+    
+    private func testNotFoundError() {
+        let urlString = "https://httpbin.org/status/404"
+        guard let url = URL(string: urlString) else { return }
+        
+        lastActionResult = "🔄 正在请求 404 接口...\nURL: \(urlString)"
+        
+        let task = Self.testSession.dataTask(with: url) { data, response, error in
+            DispatchQueue.main.async {
+                if let httpResponse = response as? HTTPURLResponse {
+                    self.lastActionResult = """
+                    ✅ 请求完成 - 404 Not Found
+                    URL: \(urlString)
+                    状态码: \(httpResponse.statusCode)
+                    
+                    这个请求已被 RUM SDK 捕获为失败的资源
+                    """
+                    print("✅ 404 Error test completed: HTTP \(httpResponse.statusCode)")
+                } else if let error = error {
+                    self.lastActionResult = """
+                    ❌ 请求失败
+                    URL: \(urlString)
+                    错误: \(error.localizedDescription)
+                    """
+                    print("❌ 404 Error test failed: \(error.localizedDescription)")
+                }
+            }
+        }
+        task.resume()
+    }
+    
+    private func testInvalidDomain() {
+        let urlString = "https://this-domain-does-not-exist-12345.com/api/test"
+        guard let url = URL(string: urlString) else { return }
+        
+        lastActionResult = "🔄 正在请求无效域名...\nURL: \(urlString)"
+        
+        let task = Self.testSession.dataTask(with: url) { data, response, error in
+            DispatchQueue.main.async {
+                if let error = error {
+                    self.lastActionResult = """
+                    ✅ DNS 解析失败（预期行为）
+                    URL: \(urlString)
+                    错误类型: \(type(of: error))
+                    错误信息: \(error.localizedDescription)
+                    
+                    这个网络错误已被 RUM SDK 捕获
+                    """
+                    print("✅ Invalid domain test completed: \(error.localizedDescription)")
+                } else {
+                    self.lastActionResult = "意外成功（不应该发生）"
+                }
+            }
+        }
+        task.resume()
+    }
+    
+    private func testConnectionTimeout() {
+        // Using httpbin's delay endpoint to simulate timeout
+        let urlString = "https://httpbin.org/delay/30"
+        guard let url = URL(string: urlString) else { return }
+        
+        lastActionResult = "🔄 正在测试连接超时...\nURL: \(urlString)\n⏱️ 等待响应（30秒延迟）"
+        
+        var request = URLRequest(url: url)
+        request.timeoutInterval = 5.0 // 5 seconds timeout
+        
+        let task = Self.testSession.dataTask(with: request) { data, response, error in
+            DispatchQueue.main.async {
+                if let error = error {
+                    self.lastActionResult = """
+                    ✅ 请求超时（预期行为）
+                    URL: \(urlString)
+                    超时时间: 5秒
+                    错误信息: \(error.localizedDescription)
+                    
+                    这个超时错误已被 RUM SDK 捕获
+                    """
+                    print("✅ Timeout test completed: \(error.localizedDescription)")
+                } else if let httpResponse = response as? HTTPURLResponse {
+                    self.lastActionResult = """
+                    意外成功 - HTTP \(httpResponse.statusCode)
+                    （请求应该超时但却成功了）
+                    """
+                }
+            }
+        }
+        task.resume()
+    }
+    
+    private func testMalformedURL() {
+        // Create an intentionally malformed request
+        let urlString = "https://httpbin.org/get?param=<invalid characters>"
+        
+        lastActionResult = """
+        🔄 正在测试格式错误的 URL...
+        URL: \(urlString)
+        """
+        
+        // Force create URL that might have issues
+        if let url = URL(string: urlString) {
+            let task = Self.testSession.dataTask(with: url) { data, response, error in
+                DispatchQueue.main.async {
+                    if let error = error {
+                        self.lastActionResult = """
+                        ✅ URL 请求失败（预期行为）
+                        URL: \(urlString)
+                        错误: \(error.localizedDescription)
+                        
+                        这个错误已被 RUM SDK 捕获
+                        """
+                    } else if let httpResponse = response as? HTTPURLResponse {
+                        self.lastActionResult = """
+                        ⚠️ 请求成功 - HTTP \(httpResponse.statusCode)
+                        URL: \(urlString)
+                        （某些格式问题可能被自动修复）
+                        """
+                    }
+                }
+            }
+            task.resume()
+        } else {
+            lastActionResult = """
+            ❌ URL 创建失败
+            无法创建 URL 对象: \(urlString)
+            这是在 URL 构造阶段就失败了
+            """
+        }
+    }
+    
+    private func testServerError() {
+        let urlString = "https://httpbin.org/status/500"
+        guard let url = URL(string: urlString) else { return }
+        
+        lastActionResult = "🔄 正在请求 500 服务器错误接口...\nURL: \(urlString)"
+        
+        let task = Self.testSession.dataTask(with: url) { data, response, error in
+            DispatchQueue.main.async {
+                if let httpResponse = response as? HTTPURLResponse {
+                    self.lastActionResult = """
+                    ✅ 请求完成 - 500 Internal Server Error
+                    URL: \(urlString)
+                    状态码: \(httpResponse.statusCode)
+                    
+                    这个服务器错误已被 RUM SDK 捕获为失败的资源
+                    """
+                    print("✅ 500 Error test completed: HTTP \(httpResponse.statusCode)")
+                } else if let error = error {
+                    self.lastActionResult = """
+                    ❌ 请求失败
+                    URL: \(urlString)
+                    错误: \(error.localizedDescription)
+                    """
+                }
+            }
+        }
+        task.resume()
+    }
+    
+    // MARK: - Trace Tests
+    
+    private func testLocalhost3000() {
+        let urlString = "http://localhost:3000/api"
+        guard let url = URL(string: urlString) else { return }
+        
+        lastActionResult = "🔄 正在请求 localhost:3000/api...\n💡 请在 Proxyman 中查看 trace headers"
+        
+        let task = Self.testSession.dataTask(with: url) { data, response, error in
+            DispatchQueue.main.async {
+                if let httpResponse = response as? HTTPURLResponse {
+                    self.lastActionResult = """
+                    ✅ 请求完成
+                    URL: \(urlString)
+                    状态码: \(httpResponse.statusCode)
+                    
+                    📋 在 Proxyman 中应该能看到以下 headers:
+                    • x-datadog-trace-id
+                    • x-datadog-parent-id
+                    • x-datadog-origin: rum
+                    • x-datadog-sampling-priority
+                    • traceparent
+                    • tracestate
+                    
+                    这个请求已被 RUM SDK 追踪为 Resource
+                    """
+                    print("✅ localhost:3000 trace test completed: HTTP \(httpResponse.statusCode)")
+                } else if let error = error {
+                    self.lastActionResult = """
+                    ⚠️ 请求失败（预期情况，如果服务未启动）
+                    URL: \(urlString)
+                    错误: \(error.localizedDescription)
+                    
+                    💡 提示:
+                    1. 确保在 localhost:3000 启动了服务器
+                    2. 或者使用 Proxyman 查看请求详情
+                    3. 即使请求失败，trace headers 也应该被添加
+                    
+                    在 Proxyman 中查找这个请求，验证 headers
+                    """
+                    print("⚠️ localhost:3000 connection failed (expected if server not running): \(error.localizedDescription)")
+                }
+            }
+        }
+        task.resume()
+    }
+    
+    private func testHackerNewsTrace() {
+        let urlString = "https://hacker-news.firebaseio.com/v0/item/8863.json"
+        guard let url = URL(string: urlString) else { return }
+        
+        lastActionResult = "🔄 正在请求 HackerNews API...\n💡 请在 Proxyman 中查看 trace headers"
+        
+        let task = Self.testSession.dataTask(with: url) { data, response, error in
+            DispatchQueue.main.async {
+                if let httpResponse = response as? HTTPURLResponse {
+                    var responsePreview = ""
+                    if let data = data,
+                       let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+                       let title = json["title"] as? String {
+                        responsePreview = "\n📰 文章: \(title)"
+                    }
+                    
+                    self.lastActionResult = """
+                    ✅ 请求成功
+                    URL: \(urlString)
+                    状态码: \(httpResponse.statusCode)\(responsePreview)
+                    
+                    📋 在 Proxyman 中检查 Request Headers:
+                    ✓ x-datadog-trace-id
+                    ✓ x-datadog-parent-id
+                    ✓ x-datadog-origin: rum
+                    ✓ traceparent (W3C format)
+                    ✓ tracestate
+                    
+                    🎯 这个请求应该:
+                    1. 在 Proxyman 中显示完整的 trace headers
+                    2. 在 RUM 后台显示为 Resource
+                    3. Trace ID 关联到当前 RUM session
+                    """
+                    print("✅ HackerNews trace test completed: HTTP \(httpResponse.statusCode)")
+                } else if let error = error {
+                    self.lastActionResult = """
+                    ❌ 请求失败
+                    URL: \(urlString)
+                    错误: \(error.localizedDescription)
+                    
+                    请检查网络连接
+                    """
+                    print("❌ HackerNews trace test failed: \(error.localizedDescription)")
+                }
+            }
+        }
+        task.resume()
+    }
 }
 
 // MARK: - WebView Tab
@@ -655,9 +1029,9 @@ private struct WebViewTabView: View {
                     .bold()
                     .padding()
                 
-                EmptyWebView()
+                LocalhostWebView(url: URL(string: "http://localhost:5173/")!)
                 
-                Text("空白 WebView")
+                Text("加载: http://localhost:5173/")
                     .font(.caption)
                     .foregroundStyle(.secondary)
                     .padding()
@@ -667,51 +1041,25 @@ private struct WebViewTabView: View {
     }
 }
 
-private struct EmptyWebView: UIViewRepresentable {
+private struct LocalhostWebView: UIViewRepresentable {
+    let url: URL
+
     func makeUIView(context: Context) -> WKWebView {
         let configuration = WKWebViewConfiguration()
         let webView = WKWebView(frame: .zero, configuration: configuration)
-        
-        // Load empty HTML
-        let emptyHTML = """
-        <!DOCTYPE html>
-        <html>
-        <head>
-            <meta charset="UTF-8">
-            <meta name="viewport" content="width=device-width, initial-scale=1.0">
-            <title>Empty WebView</title>
-            <style>
-                body { 
-                    font-family: -apple-system, BlinkMacSystemFont, sans-serif;
-                    display: flex;
-                    justify-content: center;
-                    align-items: center;
-                    height: 100vh;
-                    margin: 0;
-                    background-color: #f5f5f5;
-                }
-                .container {
-                    text-align: center;
-                    color: #666;
-                }
-            </style>
-        </head>
-        <body>
-            <div class="container">
-                <h2>Empty WebView</h2>
-                <p>This is an empty WebView for testing</p>
-            </div>
-        </body>
-        </html>
-        """
-        
-        webView.loadHTMLString(emptyHTML, baseURL: nil)
+
+        // Enable WebView-to-RUM bridging for the specified hosts only.
+        WebViewTracking.enable(webView: webView, hosts: ["localhost"])
+
+        webView.load(URLRequest(url: url))
         
         return webView
     }
     
     func updateUIView(_ webView: WKWebView, context: Context) {
-        // No updates needed
+        if webView.url != url {
+            webView.load(URLRequest(url: url))
+        }
     }
 }
 

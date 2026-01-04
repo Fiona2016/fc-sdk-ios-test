@@ -17,6 +17,7 @@ struct fc_sdk_test_for_iosApp: App {
         let clientToken = "c6e5f26a799055678169df7f5eb8ec41131"
         let environment = "local"
         let service = "fc-sdk-test-for-ios"
+        let version = "1.1.0"
 
         Flashcat.verbosityLevel = .debug
 
@@ -26,6 +27,7 @@ struct fc_sdk_test_for_iosApp: App {
                 env: environment,
                 site: .staging,
                 service: service,
+                version: version
             ),
             trackingConsent: .granted
         )
@@ -39,7 +41,15 @@ struct fc_sdk_test_for_iosApp: App {
                 uiKitActionsPredicate: DefaultUIKitRUMActionsPredicate(),
                 swiftUIViewsPredicate: DefaultSwiftUIRUMViewsPredicate(),
                 swiftUIActionsPredicate: DefaultSwiftUIRUMActionsPredicate(isLegacyDetectionEnabled: true),
-                urlSessionTracking: RUM.Configuration.URLSessionTracking()
+                urlSessionTracking: .init(
+                    firstPartyHostsTracing: .traceWithHeaders(
+                        hostsWithHeaders: [
+                            "localhost:5173": [.tracecontext],
+                            "localhost:3000": [.tracecontext],
+                            "hacker-news.firebaseio.com": [.tracecontext]
+                        ]
+                    )
+                )
             )
         )
 
@@ -49,14 +59,6 @@ struct fc_sdk_test_for_iosApp: App {
         )
 
         CrashReporting.enable()
-
-        // Basic local verification: print current session ID after the first view is likely started.
-        DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) {
-            RUMMonitor.shared().currentSessionID { sessionId in
-                print("✅ Current RUM session ID: \(sessionId ?? "nil")")
-            }
-        }
-        
         // Set user info
         Flashcat.setUserInfo(
             id: "test-user",
@@ -69,6 +71,8 @@ struct fc_sdk_test_for_iosApp: App {
         print("✅ CrashReporting enabled")
         print("✅ Environment: \(environment)")
         print("✅ Service: \(service)")
+        print("✅ URLSessionInstrumentation enabled with delegate: InstrumentedURLSessionDelegate")
+        print("✅ First-party tracing hosts: localhost:5173, hacker-news.firebaseio.com")
     }
     
     var body: some Scene {

@@ -7,12 +7,12 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
-		BAE0D38C2F02A06B00680583 /* FlashcatCore in Frameworks */ = {isa = PBXBuildFile; productRef = BAE0D38B2F02A06B00680583 /* FlashcatCore */; };
-		BAE0D38E2F02A06F00680583 /* FlashcatCrashReporting in Frameworks */ = {isa = PBXBuildFile; productRef = BAE0D38D2F02A06F00680583 /* FlashcatCrashReporting */; };
-		BAE0D3902F02A07600680583 /* FlashcatRUM in Frameworks */ = {isa = PBXBuildFile; productRef = BAE0D38F2F02A07600680583 /* FlashcatRUM */; };
-		BAE0D3922F02A07600680583 /* FlashcatSessionReplay in Frameworks */ = {isa = PBXBuildFile; productRef = BAE0D3912F02A07600680583 /* FlashcatSessionReplay */; };
-		BAE0D3942F02A07600680583 /* FlashcatTrace in Frameworks */ = {isa = PBXBuildFile; productRef = BAE0D3932F02A07600680583 /* FlashcatTrace */; };
-		BAE0D3962F02A07600680583 /* FlashcatWebViewTracking in Frameworks */ = {isa = PBXBuildFile; productRef = BAE0D3952F02A07600680583 /* FlashcatWebViewTracking */; };
+		BA2383262F0A42380091DD5E /* FlashcatCore in Frameworks */ = {isa = PBXBuildFile; productRef = BA2383252F0A42380091DD5E /* FlashcatCore */; };
+		BA2383282F0A42380091DD5E /* FlashcatCrashReporting in Frameworks */ = {isa = PBXBuildFile; productRef = BA2383272F0A42380091DD5E /* FlashcatCrashReporting */; };
+		BA23832A2F0A42380091DD5E /* FlashcatLogs in Frameworks */ = {isa = PBXBuildFile; productRef = BA2383292F0A42380091DD5E /* FlashcatLogs */; };
+		BA23832C2F0A42380091DD5E /* FlashcatRUM in Frameworks */ = {isa = PBXBuildFile; productRef = BA23832B2F0A42380091DD5E /* FlashcatRUM */; };
+		BA23832E2F0A42380091DD5E /* FlashcatTrace in Frameworks */ = {isa = PBXBuildFile; productRef = BA23832D2F0A42380091DD5E /* FlashcatTrace */; };
+		BA2383302F0A42380091DD5E /* FlashcatWebViewTracking in Frameworks */ = {isa = PBXBuildFile; productRef = BA23832F2F0A42380091DD5E /* FlashcatWebViewTracking */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -62,12 +62,12 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				BAE0D3942F02A07600680583 /* FlashcatTrace in Frameworks */,
-				BAE0D3922F02A07600680583 /* FlashcatSessionReplay in Frameworks */,
-				BAE0D38C2F02A06B00680583 /* FlashcatCore in Frameworks */,
-				BAE0D3962F02A07600680583 /* FlashcatWebViewTracking in Frameworks */,
-				BAE0D38E2F02A06F00680583 /* FlashcatCrashReporting in Frameworks */,
-				BAE0D3902F02A07600680583 /* FlashcatRUM in Frameworks */,
+				BA23832E2F0A42380091DD5E /* FlashcatTrace in Frameworks */,
+				BA23832A2F0A42380091DD5E /* FlashcatLogs in Frameworks */,
+				BA23832C2F0A42380091DD5E /* FlashcatRUM in Frameworks */,
+				BA2383302F0A42380091DD5E /* FlashcatWebViewTracking in Frameworks */,
+				BA2383262F0A42380091DD5E /* FlashcatCore in Frameworks */,
+				BA2383282F0A42380091DD5E /* FlashcatCrashReporting in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -137,12 +137,12 @@
 			);
 			name = "fc-sdk-test-for-ios";
 			packageProductDependencies = (
-				BAE0D38B2F02A06B00680583 /* FlashcatCore */,
-				BAE0D38D2F02A06F00680583 /* FlashcatCrashReporting */,
-				BAE0D38F2F02A07600680583 /* FlashcatRUM */,
-				BAE0D3912F02A07600680583 /* FlashcatSessionReplay */,
-				BAE0D3932F02A07600680583 /* FlashcatTrace */,
-				BAE0D3952F02A07600680583 /* FlashcatWebViewTracking */,
+				BA2383252F0A42380091DD5E /* FlashcatCore */,
+				BA2383272F0A42380091DD5E /* FlashcatCrashReporting */,
+				BA2383292F0A42380091DD5E /* FlashcatLogs */,
+				BA23832B2F0A42380091DD5E /* FlashcatRUM */,
+				BA23832D2F0A42380091DD5E /* FlashcatTrace */,
+				BA23832F2F0A42380091DD5E /* FlashcatWebViewTracking */,
 			);
 			productName = "fc-sdk-test-for-ios";
 			productReference = BAE0D35F2F029E5400680583 /* fc-sdk-test-for-ios.app */;
@@ -226,6 +226,9 @@
 			);
 			mainGroup = BAE0D3562F029E5400680583;
 			minimizedProjectReferenceProxies = 1;
+			packageReferences = (
+				BA2383242F0A420B0091DD5E /* XCRemoteSwiftPackageReference "fc-sdk-ios" */,
+			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = BAE0D3602F029E5400680583 /* Products */;
 			projectDirPath = "";
@@ -428,6 +431,8 @@
 				CURRENT_PROJECT_VERSION = 1;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_NSAppTransportSecurity_NSExceptionDomains_localhost_NSExceptionAllowsInsecureHTTPLoads = YES;
+				INFOPLIST_KEY_NSAppTransportSecurity_NSExceptionDomains_localhost_NSIncludesSubdomains = YES;
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
@@ -455,6 +460,8 @@
 				CURRENT_PROJECT_VERSION = 1;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_NSAppTransportSecurity_NSExceptionDomains_localhost_NSExceptionAllowsInsecureHTTPLoads = YES;
+				INFOPLIST_KEY_NSAppTransportSecurity_NSExceptionDomains_localhost_NSIncludesSubdomains = YES;
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
@@ -582,28 +589,39 @@
 		};
 /* End XCConfigurationList section */
 
+/* Begin XCRemoteSwiftPackageReference section */
+		BA2383242F0A420B0091DD5E /* XCRemoteSwiftPackageReference "fc-sdk-ios" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/flashcatcloud/fc-sdk-ios";
+			requirement = {
+				branch = "v2-stage-2\n";
+				kind = branch;
+			};
+		};
+/* End XCRemoteSwiftPackageReference section */
+
 /* Begin XCSwiftPackageProductDependency section */
-		BAE0D38B2F02A06B00680583 /* FlashcatCore */ = {
+		BA2383252F0A42380091DD5E /* FlashcatCore */ = {
 			isa = XCSwiftPackageProductDependency;
 			productName = FlashcatCore;
 		};
-		BAE0D38D2F02A06F00680583 /* FlashcatCrashReporting */ = {
+		BA2383272F0A42380091DD5E /* FlashcatCrashReporting */ = {
 			isa = XCSwiftPackageProductDependency;
 			productName = FlashcatCrashReporting;
 		};
-		BAE0D38F2F02A07600680583 /* FlashcatRUM */ = {
+		BA2383292F0A42380091DD5E /* FlashcatLogs */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = FlashcatLogs;
+		};
+		BA23832B2F0A42380091DD5E /* FlashcatRUM */ = {
 			isa = XCSwiftPackageProductDependency;
 			productName = FlashcatRUM;
 		};
-		BAE0D3912F02A07600680583 /* FlashcatSessionReplay */ = {
-			isa = XCSwiftPackageProductDependency;
-			productName = FlashcatSessionReplay;
-		};
-		BAE0D3932F02A07600680583 /* FlashcatTrace */ = {
+		BA23832D2F0A42380091DD5E /* FlashcatTrace */ = {
 			isa = XCSwiftPackageProductDependency;
 			productName = FlashcatTrace;
 		};
-		BAE0D3952F02A07600680583 /* FlashcatWebViewTracking */ = {
+		BA23832F2F0A42380091DD5E /* FlashcatWebViewTracking */ = {
 			isa = XCSwiftPackageProductDependency;
 			productName = FlashcatWebViewTracking;
 		};
